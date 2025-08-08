@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Moonlight Market — Offline</title>
+<style>
+  :root{--bg:#071027;--panel:#0b1530;--text:#e6f9ff;--muted:rgba(230,249,255,0.7);--accent:#7dd3fc;}
+  *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#02101a,#071027);color:var(--text);}
+  .wrap{max-width:960px;margin:18px auto;padding:18px;}
+  .game{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border-radius:12px;padding:16px;display:grid;grid-template-columns:1fr 320px;gap:14px;min-height:520px;}
+  .left{padding:14px;background:var(--panel);border-radius:10px;}
+  .right{padding:14px;background:rgba(255,255,255,0.02);border-radius:10px;}
+  h1{margin:0 0 8px 0;font-size:20px}
+  .scene{height:180px;border-radius:8px;background:linear-gradient(180deg,#061428,#052033);display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+  .text{font-size:17px;line-height:1.5;min-height:170px}
+  .choices{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+  button.choice{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border:1px solid rgba(255,255,255,0.04);padding:12px 14px;border-radius:10px;color:var(--text);font-weight:700;font-size:16px;cursor:pointer}
+  button.choice:active{transform:translateY(1px)}
+  .stat{font-size:15px;margin-bottom:10px}
+  .inv{font-size:14px;color:var(--muted);margin-bottom:12px}
+  .log{background:rgba(0,0,0,0.15);padding:8px;border-radius:8px;height:200px;overflow:auto;font-size:13px;color:var(--muted)}
+  .small{font-size:13px;color:var(--muted)}
+  .foot{display:flex;gap:8px;margin-top:12px}
+  .btn{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--text);font-weight:700}
+  @media (max-width:900px){.game{grid-template-columns:1fr;}.right{order:2}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <h1>Moonlight Market — Offline</h1>
+    <div class="small">Touch-friendly — no saving required</div>
+  </div>
+
+  <div class="game" role="application" aria-label="Offline choose your own adventure">
+    <div class="left">
+      <div class="scene" id="scene">🌙 Moonlight Market</div>
+      <div class="text" id="text">Loading…</div>
+      <div class="choices" id="choices"></div>
+    </div>
+
+    <div class="right">
+      <div class="stat" id="stat">Gold: 12 · Charm: 1 · Luck: 2</div>
+      <div class="inv" id="inv">Inventory: Map, Coin</div>
+      <div class="small">Log</div>
+      <div class="log" id="log"></div>
+      <div class="foot">
+        <button class="btn" id="restart">Restart</button>
+        <button class="btn" id="help">How to play</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:12px;font-size:13px;color:rgba(255,255,255,0.55)">
+    Tip: Save this file in the Files app, then tap it to open in Safari. You can add to Home Screen for a quick shortcut.
+  </div>
+</div>
+
+<script>
+/* Simple offline engine — no localStorage, minimal features for iPhone compatibility */
+const story = {
+  start: {
+    text: `You arrive at the Moonlight Market — a string of colorful stalls beneath an enormous silver moon. Lanterns bob; a singer tunes a strange lute. You have a small coin, a folded map, and a feeling that anything could happen. Where do you go?`,
+    choices: [
+      {txt: "Visit the fortune-teller's tent", to: 'fortune'},
+      {txt: 'Browse the oddities stall', to: 'oddities'},
+      {txt: 'Follow the music', to: 'music'}
+    ]
+  },
+  fortune: {
+    text: `The fortune-teller, an ageless figure with bright eyes, offers to read your fate in exchange for a coin.`,
+    choices:[
+      {txt:'Pay the coin for a full reading', to:'reading', action:{gold:-1, log:'Paid 1 gold for a reading.'}},
+      {txt:'Ask for a hint only', to:'hint', action:{charm:1, log:'Gained charm by asking a hint.'}},
+      {txt:'Decline and leave', to:'start'}
+    ]
+  },
+  reading:{
+    text:`She whispers: "A decision tonight will shape a future you cannot yet imagine." She hands you a silver talisman.`,
+    choices:[
+      {txt:'Keep the talisman', to:'keep_talisman', action:{inv_add:'talisman', log:'Kept a silver talisman.'}},
+      {txt:'Sell it to the oddities stall', to:'oddities', action:{gold:3, log:'Sold talisman for 3 gold.'}}
+    ]
+  },
+  keep_talisman:{ text:`You feel luckier already.`, choices:[{txt:'Follow the music', to:'music', action:{luck:1}},{txt:'Explore further', to:'oddities'}]},
+  oddities:{
+    text:`Shelves of clocks, tiny ships, and jars with constellations. The owner eyes you keenly.`,
+    choices:[
+      {txt:'Trade your map for info', to:'trade_map'},
+      {txt:'Chat with the owner', to:'chat_owner'},
+      {txt:'Leave', to:'start'}
+    ]
+  },
+  trade_map:{ text:`The owner points to a hidden back alley where a secret show is being held.`, choices:[{txt:'Head to the secret show', to:'secret_show'},{txt:'Return', to:'start'}]},
+  chat_owner:{ text:`You learn a rumor about the moonstone — a gem that can grant a single wish if sung to under moonlight.`, choices:[{txt:'Seek the moonstone', to:'moonstone'},{txt:'Return', to:'start'}]},
+  music:{
+    text:`A masked musician plays. A performer offers you a role if you can impress them.`,
+    choices:[
+      {txt:'Perform a trick (requires Charm ≥ 2)', to:'perform', check:{stat:'charm', dc:2}},
+      {txt:'Listen quietly', to:'listen'},
+      {txt:'Sneak backstage', to:'backstage'}
+    ]
+  },
+  perform:{
+    text:`You step forward to perform.`,
+    success:{text:'Your trick dazzles — applause! You earn a few coins and a contact.', action:{gold:2,charm:1,log:'Impressed crowd (+2 gold, +1 charm).'}, choices:[{txt:'Continue', to:'start'}]},
+    fail:{text:'You fumble and feel embarrassed.', action:{charm:-1,log:'Failed performance (-1 charm).'}, choices:[{txt:'Recover and leave', to:'start'}]}
+  },
+  listen:{ text:`You enjoy the tune. The night feels calm.`, choices:[{txt:'Wander', to:'start'}]},
+  backstage:{ text:`Backstage is dim. A crate spills to reveal a small chest inscribed with a moon motif.`, choices:[{txt:'Open the chest', to:'chest'},{txt:'Leave', to:'start'}]},
+  chest:{ text:`Inside: a shimmering moonstone! It hums when you touch it.`, choices:[{txt:'Use the moonstone to wish for gold', to:'wish_gold'},{txt:'Wish for luck', to:'wish_luck'},{txt:'Pocket it', to:'start', action:{inv_add:'moonstone', log:'Pocketed moonstone.'}}]},
+  wish_gold:{ text:`A pouch of coins appears at your feet. You gained 10 gold.`, choices:[{txt:'Continue', to:'start', action:{gold:10,log:'Wished for gold (+10).'}}]},
+  wish_luck:{ text:`A calm warmth spreads; you feel luckier.`, choices:[{txt:'Test your luck', to:'oddities', action:{luck:2,log:'Wished for luck (+2).'}}]},
+  secret_show:{ text:`A secret troupe performs. A director offers you a small part for a fee of 3 gold.`, choices:[{txt:'Pay 3 gold', to:'act', cond:(s)=>s.gold>=3, action:{gold:-3,log:'Paid for a part (-3 gold).'}},{txt:'Decline', to:'start'}]},
+  act:{ text:`Your act spreads your fame; you gain gold and charm.`, choices:[{txt:'Enjoy the attention', to:'start', action:{gold:4,charm:2,log:'Gained fame (+4 gold, +2 charm).'}}]},
+  moonstone:{ text:`The moonstone is rumored to react strongest on the highest roof of the market.`, choices:[{txt:'Climb the roof', to:'roof'},{txt:'Return', to:'start'}]},
+  roof:{ text:`Under full moonlight you can use the moonstone. Your prior choices influence the result.`, choices:[{txt:'Wish for a new life', to:'ending_newlife'},{txt:'Use it to help someone', to:'ending_kindness'},{txt:'Destroy it', to:'ending_destroy'}]},
+  ending_newlife:{ text:`Bright light. You awaken in a new city. (Ending: A New Life)`, choices:[{txt:'Play again', to:'start'}]},
+  ending_kindness:{ text:`Your wish healed a stranger's heartbreak. People remember you kindly. (Ending: Kindness)`, choices:[{txt:'Play again', to:'start'}]},
+  ending_destroy:{ text:`The stone shatters. You feel solemn relief. (Ending: Temperance)`, choices:[{txt:'Play again', to:'start'}]}
+};
+
+/* State */
+let state = {
+  loc: 'start',
+  gold: 12,
+  charm: 1,
+  luck: 2,
+  inventory: ['Map','Coin'],
+  log: []
+};
+
+function render() {
+  const node = story[state.loc];
+  document.getElementById('scene').innerText = '🌙 ' + (state.loc.split('_')[0] || 'Market');
+  document.getElementById('text').innerText = node.text || '';
+  const choicesDiv = document.getElementById('choices');
+  choicesDiv.innerHTML = '';
+  (node.choices || []).forEach((c, idx) => {
+    if (c.cond && !c.cond(state)) return;
+    const btn = document.createElement('button');
+    btn.className = 'choice';
+    btn.innerText = `${idx+1}. ${c.txt}`;
+    btn.onclick = () => choose(c);
+    choicesDiv.appendChild(btn);
+  });
+  updateHUD();
+}
+
+function choose(choice) {
+  // apply action if present
+  if (choice.action) applyAction(choice.action);
+  // checks (simple)
+  if (choice.check) {
+    const val = state[choice.check.stat] || 0;
+    if (val >= choice.check.dc) {
+      // success branch of current node
+      const node = story[state.loc];
+      if (node && node.success) {
+        if (node.success.action) applyAction(node.success.action);
+        if (node.success.log) state.log.push(node.success.log);
+        // if success has own choices, create temporary node
+        if (node.success.choices) {
+          state.loc = '__temp';
+          story.__temp = { text: node.success.text || '', choices: node.success.choices };
+          state.log.push(node.success.text || '');
+          render();
+          return;
+        }
+      }
+      // fallback move
+      state.loc = choice.to || state.loc;
+      render();
+      return;
+    } else {
+      const node = story[state.loc];
+      if (node && node.fail) {
+        if (node.fail.action) applyAction(node.fail.action);
+        state.loc = '__temp';
+        story.__temp = { text: node.fail.text || '', choices: node.fail.choices || [] };
+        state.log.push(node.fail.text || '');
+        render();
+        return;
+      } else {
+        state.loc = choice.to || state.loc;
+        render();
+        return;
+      }
+    }
+  }
+
+  // navigation
+  if (choice.to) state.loc = choice.to;
+  render();
+}
+
+function applyAction(a){
+  if (!a) return;
+  if (a.gold) state.gold += a.gold;
+  if (a.charm) state.charm += a.charm;
+  if (a.luck) state.luck += a.luck;
+  if (a.inv_add) state.inventory.push(cap(a.inv_add));
+  if (a.inv_remove) {
+    const idx = state.inventory.findIndex(x=>x.toLowerCase()===a.inv_remove.toLowerCase());
+    if (idx>=0) state.inventory.splice(idx,1);
+  }
+  if (a.log) state.log.push(a.log);
+}
+
+function updateHUD(){
+  document.getElementById('stat').innerText = `Gold: ${state.gold} · Charm: ${state.charm} · Luck: ${state.luck}`;
+  document.getElementById('inv').innerText = 'Inventory: ' + (state.inventory.join(', ') || '(empty)');
+  document.getElementById('log').innerHTML = state.log.map(s=>'• '+s).join('\n');
+}
+
+/* Simple helpers */
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+/* Buttons */
+document.getElementById('restart').onclick = function(){
+  if (!confirm('Restart the adventure?')) return;
+  state = { loc: 'start', gold:12, charm:1, luck:2, inventory:['Map','Coin'], log:[] };
+  render();
+};
+document.getElementById('help').onclick = function(){
+  alert('Tap a choice to proceed. This offline version keeps everything in memory — no saving. Press Restart to start over.');
+};
+
+/* Start */
+render();
+</script>
+</body>
+</html>
