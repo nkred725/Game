@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Number Guessing Game</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    background: #222;
+    color: #eee;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    flex-direction: column;
+  }
+  h1 {
+    margin-bottom: 0.5em;
+  }
+  input[type=number] {
+    font-size: 1.2em;
+    padding: 0.5em;
+    width: 100px;
+    margin-right: 1em;
+  }
+  button {
+    font-size: 1.2em;
+    padding: 0.5em 1em;
+    cursor: pointer;
+  }
+  #message {
+    margin-top: 1em;
+    min-height: 2em;
+  }
+  #chances {
+    margin-top: 0.5em;
+  }
+</style>
+</head>
+<body>
+
+<h1>Guess the Number (1 to 500)</h1>
+<div>
+  <input type="number" id="guessInput" min="1" max="500" placeholder="Your guess" />
+  <button id="guessBtn">Guess</button>
+</div>
+<div id="message"></div>
+<div id="chances"></div>
+<button id="restartBtn" style="margin-top:1em; display:none;">Restart Game</button>
+
+<script>
+  let answer;
+  let chancesLeft;
+
+  function startGame() {
+    answer = Math.floor(Math.random() * 500) + 1;
+    chancesLeft = 5;
+    document.getElementById('message').textContent = '';
+    document.getElementById('chances').textContent = `Chances left: ${chancesLeft}`;
+    document.getElementById('guessInput').value = '';
+    document.getElementById('guessInput').disabled = false;
+    document.getElementById('guessBtn').disabled = false;
+    document.getElementById('restartBtn').style.display = 'none';
+  }
+
+  function makeGuess() {
+    const input = document.getElementById('guessInput');
+    const guess = Number(input.value);
+    const message = document.getElementById('message');
+    const chances = document.getElementById('chances');
+
+    if (!guess || guess < 1 || guess > 500) {
+      message.textContent = 'Please enter a number between 1 and 500.';
+      return;
+    }
+
+    if (guess === answer) {
+      message.textContent = `🎉 Correct! The number was ${answer}. You win!`;
+      endGame();
+      return;
+    }
+
+    chancesLeft--;
+    if (chancesLeft === 0) {
+      message.textContent = `😞 Out of chances! The number was ${answer}. Try again?`;
+      endGame();
+      return;
+    }
+
+    if (guess < answer) {
+      message.textContent = 'Try higher.';
+    } else {
+      message.textContent = 'Try lower.';
+    }
+    chances.textContent = `Chances left: ${chancesLeft}`;
+    input.value = '';
+  }
+
+  function endGame() {
+    document.getElementById('guessInput').disabled = true;
+    document.getElementById('guessBtn').disabled = true;
+    document.getElementById('restartBtn').style.display = 'inline-block';
+  }
+
+  document.getElementById('guessBtn').addEventListener('click', makeGuess);
+  document.getElementById('restartBtn').addEventListener('click', startGame);
+  document.getElementById('guessInput').addEventListener('keypress', e => {
+    if (e.key === 'Enter') makeGuess();
+  });
+
+  startGame();
+</script>
+
+</body>
+</html>
